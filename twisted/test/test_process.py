@@ -44,7 +44,7 @@ from twisted.python.log import msg
 from twisted.internet import reactor, protocol, error, interfaces, defer
 from twisted.trial import unittest
 from twisted.python import runtime, procutils
-from twisted.python.compat import _PY3, networkString, xrange, bytesEnviron
+from twisted.python.compat import _PY3, networkString, xrange, bytesEnviron, _maybeMBCS
 from twisted.python.filepath import FilePath
 
 
@@ -2404,22 +2404,16 @@ class DumbWin32ProcTests(unittest.TestCase):
         from twisted.internet import _dumbwin32proc
         from twisted.test import mock_win32process
         self.patch(_dumbwin32proc, "win32process", mock_win32process)
-        scriptPath = FilePath(__file__).sibling(b"process_cmdline.py").path
+        scriptPath = FilePath(__file__).sibling(u"process_cmdline.py").path
+        pyExe = FilePath(sys.executable).asTextMode().path
 
         d = defer.Deferred()
         processProto = TrivialProcessProtocol(d)
-        if _PY3:
-            comspec = os.environ["COMSPEC"].encode("mbcs")
-        else:
-            comspec = str(os.environ["COMSPEC"])
-        cmd = [comspec, b"/c", pyExe, scriptPath]
+        comspec = _maybeMBCS(os.environ["COMSPEC"])
+        cmd = [comspec, u"/c", pyExe, scriptPath]
 
-        p = _dumbwin32proc.Process(reactor,
-                                  processProto,
-                                  None,
-                                  cmd,
-                                  {},
-                                  None)
+        p = _dumbwin32proc.Process(
+            reactor, processProto, None, cmd, {}, None)
         self.assertEqual(42, p.pid)
         self.assertEqual("<Process pid=42>", repr(p))
 
