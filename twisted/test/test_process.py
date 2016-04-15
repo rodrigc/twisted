@@ -2409,7 +2409,7 @@ class DumbWin32ProcTests(unittest.TestCase):
 
         d = defer.Deferred()
         processProto = TrivialProcessProtocol(d)
-        comspec = _maybeMBCS(os.environ["COMSPEC"])
+        comspec = _maybeMBCS(os.environ.get("COMSPEC", "cmd.exe"))
         cmd = [comspec, u"/c", pyExe, scriptPath]
 
         p = _dumbwin32proc.Process(
