@@ -437,6 +437,8 @@ testModules = [
     "twisted.internet.test.test_kqueuereactor",
     "twisted.internet.test.test_main",
     "twisted.internet.test.test_newtls",
+    "twisted.internet.test.test_pollingfile",
+    "twisted.internet.test.test_win32events",
     "twisted.internet.test.test_posixbase",
     "twisted.internet.test.test_posixprocess",
     "twisted.internet.test.test_process",
