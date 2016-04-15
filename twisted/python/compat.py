@@ -763,6 +763,22 @@ else:
     unichr = unichr
     raw_input = raw_input
 
+def _maybeMBCS(s):
+    """
+    Convert C{s} to a L{unicode} string, if required.
+
+    @param s: The string to convert.
+    @type s: L{bytes} or L{unicode}
+
+    @rtype: L{unicode}
+    """
+    assert os.name == "win32"
+    assert type(s) in [bytes, unicode]
+
+    if isinstance(s, bytes):
+        return s.decode('mbcs')
+    return s
+
 
 
 __all__ = [
@@ -802,4 +818,5 @@ __all__ = [
     "intern",
     "unichr",
     "raw_input",
+    "_maybeMBCS",
 ]
