@@ -51,7 +51,7 @@ import win32gui
 
 from twisted.internet import posixbase
 from twisted.python import log, threadable, failure
-from twisted.python.compat import keys
+from twisted.python.compat import _keys
 from twisted.internet.interfaces import IReactorFDSet
 from twisted.internet.interfaces import IReactorWin32Events
 from twisted.internet.threads import blockingCallFromThread
