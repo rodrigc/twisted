@@ -1,8 +1,8 @@
 language: python
 
-branches:
-  only:
-    - trunk
+#branches:
+#  only:
+#    - trunk
 
 addons:
   apt:
