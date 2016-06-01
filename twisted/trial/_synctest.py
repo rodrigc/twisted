@@ -362,6 +362,10 @@ class _AssertRaisesContext(object):
         return True
 
 
+# pyunit in Python 2.7 has assertRegexpMatches() which was
+# renamed to assertRegex() in Python 3.2
+if sys.version_info[:2] < (3, 2):
+    setattr(pyunit.TestCase, "assertRegex", pyunit.TestCase.assertRegexpMatches)
 
 class _Assertions(pyunit.TestCase, object):
     """
