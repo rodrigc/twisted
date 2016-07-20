@@ -1,6 +1,7 @@
 # Copyright (c) Twisted Matrix Laboratories.
 # See LICENSE for details.
 
+from cpython.version cimport PY_MAJOR_VERSION
 
 # HANDLE and SOCKET are pointer-sized (they are 64 bit wide in 64-bit builds)
 ctypedef size_t HANDLE
@@ -111,6 +112,7 @@ cdef extern from '':
 
 cdef extern from 'string.h':
     void *memset(void *s, int c, size_t n)
+    size_t wcslen(const WCHAR *)
 
 cdef extern from 'winsock_pointers.h':
     int initWinsockPointers()
@@ -118,6 +120,9 @@ cdef extern from 'winsock_pointers.h':
     void (*lpGetAcceptExSockaddrs)(void *buffer, DWORD recvlen, DWORD locallen, DWORD remotelen, sockaddr **localaddr, int *locallen, sockaddr **remoteaddr, int *remotelen)
     BOOL (*lpConnectEx)(SOCKET s, sockaddr *name, int namelen, void *buff, DWORD sendlen, DWORD *sentlen, OVERLAPPED *ov)
 #    BOOL (*lpTransmitFile)(SOCKET s, HANDLE hFile, DWORD size, DWORD buffer_size, OVERLAPPED *ov, TRANSMIT_FILE_BUFFERS *buff, DWORD flags)
+
+cdef extern from 'stdio.h':
+    int wprintf(const WCHAR *)
 
 cdef struct myOVERLAPPED:
     OVERLAPPED ov
@@ -214,32 +219,45 @@ def makesockaddr(object buff):
 cdef object _makesockaddr(sockaddr *addr, Py_ssize_t len):
     cdef sockaddr_in *sin
     cdef sockaddr_in6 *sin6
-    cdef Py_UNICODE buff[256]
+    cdef WCHAR buff[256]
     cdef int rc
     cdef DWORD buff_size = 256
     if not len:
         return None
+
+    memset(buff, 0, sizeof(buff))
+
     if addr.sa_family == AF_INET:
         sin = <sockaddr_in *>addr
         rc = WSAAddressToStringW(addr, sizeof(sockaddr_in), NULL, buff, &buff_size)
         if rc == SOCKET_ERROR:
             raise_error(0, 'WSAAddressToStringW')
-        host, sa_port = PyUnicode_FromWideChar(buff, -1), ntohs(sin.sin_port)
-        host, port = host.rsplit(':', 1)
+        sa_port = ntohs(sin.sin_port)
+        host = PyUnicode_FromWideChar(buff, wcslen(buff))
+        host, port = host.rsplit(u':', 1)
         port = int(port)
         assert port == sa_port
+
+        if PY_MAJOR_VERSION < 3:
+            host = host.encode("utf-8")
+
         return host, port
     elif addr.sa_family == AF_INET6:
         sin6 = <sockaddr_in6 *>addr
         rc = WSAAddressToStringW(addr, sizeof(sockaddr_in6), NULL, buff, &buff_size)
         if rc == SOCKET_ERROR:
             raise_error(0, 'WSAAddressToStringW')
-        host, sa_port = PyUnicode_FromWideChar(buff, -1), ntohs(sin6.sin6_port)
-        host, port = host.rsplit(':', 1)
+        sa_port = ntohs(sin6.sin6_port)
+        host = PyUnicode_FromWideChar(buff, wcslen(buff))
+        host, port = host.rsplit(u':', 1)
         port = int(port)
         assert host[0] == '['
         assert host[-1] == ']'
         assert port == sa_port
+
+        if PY_MAJOR_VERSION < 3:
+            host = host.encode("utf-8")
+
         return host[1:-1], port
     else:
         raise_error(0, "unsupported address family %d" (addr.sa_family))
@@ -251,6 +269,10 @@ cdef object fillinetaddr(sockaddr_in *dest, object addr):
     cdef int addrlen = sizeof(sockaddr_in)
     cdef Py_ssize_t rc
     host, port = addr
+
+    if PY_MAJOR_VERSION < 3:
+        if (isinstance(host, str)):
+            host = unicode(host, "utf-8")
 
     memset(hostWstr, 0, sizeof(hostWstr))
     rc = PyUnicode_AsWideChar(host, hostWstr, 255)
@@ -272,6 +294,10 @@ cdef object fillinet6addr(sockaddr_in6 *dest, object addr):
     cdef int addrlen = sizeof(sockaddr_in6)
     host, port, flow, scope = addr
     host = host.split("%")[0] # remove scope ID, if any
+
+    if PY_MAJOR_VERSION < 3:
+        if (isinstance(host, str)):
+            host = unicode(host, "utf-8")
 
     memset(hostWstr, 0, sizeof(hostWstr))
     rc = PyUnicode_AsWideChar(host, hostWstr, 255)
