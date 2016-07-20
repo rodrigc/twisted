@@ -8,6 +8,7 @@ Abstract file handle class
 from twisted.internet import main, error, interfaces
 from twisted.internet.abstract import _ConsumerMixin, _LogOwner
 from twisted.python import failure
+from twisted.python.compat import unicode
 
 from zope.interface import implementer
 import errno
@@ -71,8 +72,8 @@ class FileHandle(_ConsumerMixin, _LogOwner):
                 return False
         remainder = size % self.readBufferSize
         if remainder:
-            self.dataReceived(buffer(self._readBuffers[full_buffers],
-                                     0, remainder))
+            remainderView = memoryview(self._readBuffers[full_buffers])
+            self.dataReceived(remainderView[0:remainder].tobytes())
         if self.dynamicReadBuffers:
             total_buffer_size = self.readBufferSize * len(self._readBuffers)
             # we have one buffer too many
@@ -143,7 +144,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
 
     # write stuff
-    dataBuffer = ''
+    dataBuffer = b''
     offset = 0
     writing = False
     _writeScheduled = None
@@ -209,7 +210,7 @@ class FileHandle(_ConsumerMixin, _LogOwner):
             self.offset += bytes
             # If there is nothing left to send,
             if self.offset == len(self.dataBuffer) and not self._tempDataLen:
-                self.dataBuffer = ""
+                self.dataBuffer = b""
                 self.offset = 0
                 # stop writing
                 self.stopWriting()
@@ -236,8 +237,9 @@ class FileHandle(_ConsumerMixin, _LogOwner):
         if len(self.dataBuffer) - self.offset < self.SEND_LIMIT:
             # If there is currently less than SEND_LIMIT bytes left to send
             # in the string, extend it with the array data.
-            self.dataBuffer = (buffer(self.dataBuffer, self.offset) +
-                               "".join(self._tempDataBuffer))
+            writeView = memoryview(self.dataBuffer)
+            self.dataBuffer = (writeView[self.offset:-1].tobytes() +
+                               b"".join(self._tempDataBuffer))
             self.offset = 0
             self._tempDataBuffer = []
             self._tempDataLen = 0
@@ -246,7 +248,8 @@ class FileHandle(_ConsumerMixin, _LogOwner):
 
         # Send as much data as you can.
         if self.offset:
-            evt.buff = buff = buffer(self.dataBuffer, self.offset)
+            sendView = memoryview(self.dataBuffer)
+            evt.buff = buff = sendView[self.offset:-1]
         else:
             evt.buff = buff = self.dataBuffer
         rc, bytes = self.writeToHandle(buff, evt)
