@@ -30,21 +30,37 @@ environment:
     # See: http://stackoverflow.com/a/13751649/163740
     CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\bin\\admin\\run_with_env.cmd"
 
-    TRIAL_REPORTER: text
+    TRIAL_REPORTER: verbose
 
   # Only use pre-installed Python versions, which Appveyor may upgrade to
   # a later point release.
   # See: http://www.appveyor.com/docs/installed-software#python
   matrix:
-    - PYTHON_HOME: C:\\Python27-x64
-      PYTHON_VERSION: "2.7"
-      PYTHON_ARCH: "64"
-      TOXENV: py27-coverage-windows,codecov-publish
-    #- PYTHON_HOME: "C:\\PYTHON35-x64"
-    #  PYTHON_VERSION: "3.5"
+    #- PYTHON_HOME: C:\\Python27-x64
+    #  PYTHON_VERSION: "2.7"
     #  PYTHON_ARCH: "64"
-    #  TOXENV: 'py35-tests-windows'
+    #  TOXENV: py27-coverage-windows,codecov-publish
+    #  TWISTED_REACTOR: "default"
+    #- PYTHON_HOME: C:\\Python27-x64
+    #  PYTHON_VERSION: "2.7"
+    #  PYTHON_ARCH: "64"
+    #  TOXENV: py27-coverage-windows,codecov-publish
+    #  TWISTED_REACTOR: "iocp"
+    - PYTHON_HOME: C:\\PYTHON35-x64
+      PYTHON_VERSION: "3.5"
+      PYTHON_ARCH: "64"
+      TOXENV: py35-tests-windows
+      TWISTED_REACTOR: 'default'
+    - PYTHON_HOME: C:\\PYTHON35-x64
+      PYTHON_VERSION: "3.5"
+      PYTHON_ARCH: "64"
+      TOXENV: py35-tests-windows
+      TWISTED_REACTOR: "iocp"
 
+matrix:
+ allow_failures:
+    - PYTHON_VERSION: "3.5"
+    - TWISTED_REACTOR: "iocp"
 
 install:
   # Install OpenSSH through chocolatey
@@ -85,3 +101,4 @@ install:
 
 test_script:
   - "%CMD_IN_ENV% python -m tox -e %TOXENV%"
+  - cmd: "dir /s /b"
