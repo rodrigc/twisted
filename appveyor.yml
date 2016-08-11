@@ -52,6 +52,13 @@ environment:
     #  TOXENV: 'py35-tests-windows'
 
 
+matrix:
+  allow_failures:
+    # FIXME: https://twistedmatrix.com/trac/ticket/8679
+    # For now iocp reactor tests are failing.
+    - TWISTED_REACTOR: iocp
+
+
 install:
   # Install OpenSSH through chocolatey
   - "choco install win32-openssh -confirm"
