@@ -33,9 +33,7 @@ class Options(usage.Options):
     """
     synopsis = "[web options]"
 
-    optParameters = [["port", "p", None, "strports description of the port to "
-                      "start the server on."],
-                     ["logfile", "l", None,
+    optParameters = [["logfile", "l", None,
                       "Path to web CLF (Combined Log Format) log file."],
                      ["https", None, None,
                       "Port to listen on for Secure HTTP."],
@@ -73,7 +71,15 @@ demo webserver that has the Test class from twisted.web.demo in it."""
         usage.Options.__init__(self)
         self['indexes'] = []
         self['root'] = None
+        self['ports'] = []
 
+    def opt_port(self, port):
+        """
+        strports description of port to start the server on.
+        """
+        self['ports'].append(port)
+
+    opt_p = opt_port
 
     def opt_index(self, indexName):
         """
@@ -193,18 +199,21 @@ demo webserver that has the Test class from twisted.web.demo in it."""
         If no server port was supplied, select a default appropriate for the
         other options supplied.
         """
-        if self['https']:
-            try:
-                reflect.namedModule('OpenSSL.SSL')
-            except ImportError:
-                raise usage.UsageError("SSL support not installed")
-        if self['port'] is None:
+        if len(self['ports']) == 0:
             if not _PY3 and self['personal']:
                 path = os.path.expanduser(
                     os.path.join('~', distrib.UserDirectory.userSocketName))
-                self['port'] = 'unix:' + path
+                self['ports'].append('unix:' + path)
             else:
-                self['port'] = 'tcp:8080'
+                self['ports'].append('tcp:8080')
+        if self['https']:
+            ## TODO: Deprecate it?
+            my_strport = 'ssl:port={}:privateKey={}:certKey={}'.format(
+                             self['https'],
+                             self['privkey'],
+                             self['certificate'],
+                         )
+            self['ports'].append(my_strport)
 
 
 
@@ -241,18 +250,10 @@ def makeService(config):
     site.displayTracebacks = not config["notracebacks"]
 
     if not _PY3 and config['personal']:
-        personal = strports.service(
-            config['port'], makePersonalServerFactory(site))
-        personal.setServiceParent(s)
-    else:
-        if config['https']:
-            from twisted.internet.ssl import DefaultOpenSSLContextFactory
-            i = internet.SSLServer(int(config['https']), site,
-                          DefaultOpenSSLContextFactory(config['privkey'],
-                                                       config['certificate']))
-            i.setServiceParent(s)
-        strports.service(config['port'], site).setServiceParent(s)
-
+        site = makePersonalServerFactory(site)
+    for port in config['ports']:
+        svc = strports.service(port, site)
+        svc.setServiceParent(s)
     return s
 
 
