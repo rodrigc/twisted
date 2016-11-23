@@ -73,13 +73,15 @@ demo webserver that has the Test class from twisted.web.demo in it."""
         self['root'] = None
         self['ports'] = []
 
+
     def opt_port(self, port):
         """
-        strports description of port to start the server on.
+        Strports description of port to start the server on.
         """
         self['ports'].append(port)
 
     opt_p = opt_port
+
 
     def opt_index(self, indexName):
         """
@@ -207,13 +209,13 @@ demo webserver that has the Test class from twisted.web.demo in it."""
             else:
                 self['ports'].append('tcp:8080')
         if self['https']:
-            ## TODO: Deprecate it?
-            my_strport = 'ssl:port={}:privateKey={}:certKey={}'.format(
+            # TODO: Deprecate it?
+            sslStrport = 'ssl:port={}:privateKey={}:certKey={}'.format(
                              self['https'],
                              self['privkey'],
                              self['certificate'],
                          )
-            self['ports'].append(my_strport)
+            self['ports'].append(sslStrport)
 
 
 
