@@ -14,7 +14,7 @@ from twisted.web import server, static, script, demo, wsgi
 from twisted.internet import interfaces, reactor
 from twisted.python import usage, reflect, threadpool
 from twisted.python.compat import _PY3
-from twisted.application import internet, service, strports
+from twisted.application import service, strports
 
 if not _PY3:
     # FIXME: https://twistedmatrix.com/trac/ticket/8009
