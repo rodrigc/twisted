@@ -9,6 +9,7 @@ Tests for parts of our release automation system.
 import os
 
 
+from pkg_resources import parse_requirements
 from setuptools.dist import Distribution
 import twisted
 from twisted.trial.unittest import TestCase
@@ -77,13 +78,33 @@ class OptionalDependenciesTests(TestCase):
         """
         Setuptools' Distribution object parses and stores its C{extras_require}
         argument as an attribute.
+
+        Requirements for install_requires/setup_requires can specified as:
+         * a single requirement as a string, such as:
+           {'im_an_extra_dependency': 'thing'}
+         * a series of requirements as a list, such as:
+           {'im_an_extra_dependency': ['thing']}
+         * a series of requirements as a multi-line string, such as:
+           {'im_an_extra_dependency': '''
+                                      thing
+                                      '''}
+
+        The extras need to be parsed with pkg_resources.parse_requirements(),
+        which returns a generator.
         """
         extras = dict(im_an_extra_dependency="thing")
         attrs = dict(extras_require=extras)
         distribution = Distribution(attrs)
+
+        def canonicalizeExtras(myExtras):
+            parsedExtras = {}
+            for name, val in myExtras.items():
+                parsedExtras[name] = list(parse_requirements(val))
+            return parsedExtras
+
         self.assertEqual(
-            extras,
-            distribution.extras_require
+            canonicalizeExtras(extras),
+            canonicalizeExtras(distribution.extras_require)
         )
 
 
@@ -128,7 +149,7 @@ class OptionalDependenciesTests(TestCase):
         deps = _EXTRAS_REQUIRE['tls']
         self.assertIn('pyopenssl >= 16.0.0', deps)
         self.assertIn('service_identity', deps)
-        self.assertIn('idna >= 0.6', deps)
+        self.assertIn('idna >= 0.6, != 2.3', deps)
 
 
     def test_extrasRequiresConchDeps(self):
@@ -139,7 +160,7 @@ class OptionalDependenciesTests(TestCase):
         """
         deps = _EXTRAS_REQUIRE['conch']
         self.assertIn('pyasn1', deps)
-        self.assertIn('cryptography >= 0.9.1', deps)
+        self.assertIn('cryptography >= 1.5', deps)
         self.assertIn('appdirs >= 1.4.0', deps)
 
 
@@ -160,7 +181,7 @@ class OptionalDependenciesTests(TestCase):
         for the packages required to make Twisted's serial support work.
         """
         self.assertIn(
-            'pyserial',
+            'pyserial >= 3.0',
             _EXTRAS_REQUIRE['serial']
         )
 
@@ -171,7 +192,7 @@ class OptionalDependenciesTests(TestCase):
         for the packages required to make Twisted HTTP/2 support work.
         """
         deps = _EXTRAS_REQUIRE['http2']
-        self.assertIn('h2 >= 2.5.0, < 3.0', deps)
+        self.assertIn('h2 >= 3.0, < 4.0', deps)
         self.assertIn('priority >= 1.1.0, < 2.0', deps)
 
 
@@ -184,13 +205,13 @@ class OptionalDependenciesTests(TestCase):
         deps = _EXTRAS_REQUIRE['all_non_platform']
         self.assertIn('pyopenssl >= 16.0.0', deps)
         self.assertIn('service_identity', deps)
-        self.assertIn('idna >= 0.6', deps)
+        self.assertIn('idna >= 0.6, != 2.3', deps)
         self.assertIn('pyasn1', deps)
-        self.assertIn('cryptography >= 0.9.1', deps)
+        self.assertIn('cryptography >= 1.5', deps)
         self.assertIn('soappy', deps)
-        self.assertIn('pyserial', deps)
+        self.assertIn('pyserial >= 3.0', deps)
         self.assertIn('appdirs >= 1.4.0', deps)
-        self.assertIn('h2 >= 2.5.0, < 3.0', deps)
+        self.assertIn('h2 >= 3.0, < 4.0', deps)
         self.assertIn('priority >= 1.1.0, < 2.0', deps)
 
 
@@ -203,12 +224,12 @@ class OptionalDependenciesTests(TestCase):
         deps = _EXTRAS_REQUIRE['osx_platform']
         self.assertIn('pyopenssl >= 16.0.0', deps)
         self.assertIn('service_identity', deps)
-        self.assertIn('idna >= 0.6', deps)
+        self.assertIn('idna >= 0.6, != 2.3', deps)
         self.assertIn('pyasn1', deps)
-        self.assertIn('cryptography >= 0.9.1', deps)
+        self.assertIn('cryptography >= 1.5', deps)
         self.assertIn('soappy', deps)
-        self.assertIn('pyserial', deps)
-        self.assertIn('h2 >= 2.5.0, < 3.0', deps)
+        self.assertIn('pyserial >= 3.0', deps)
+        self.assertIn('h2 >= 3.0, < 4.0', deps)
         self.assertIn('priority >= 1.1.0, < 2.0', deps)
         self.assertIn('pyobjc-core', deps)
 
@@ -222,12 +243,12 @@ class OptionalDependenciesTests(TestCase):
         deps = _EXTRAS_REQUIRE['windows_platform']
         self.assertIn('pyopenssl >= 16.0.0', deps)
         self.assertIn('service_identity', deps)
-        self.assertIn('idna >= 0.6', deps)
+        self.assertIn('idna >= 0.6, != 2.3', deps)
         self.assertIn('pyasn1', deps)
-        self.assertIn('cryptography >= 0.9.1', deps)
+        self.assertIn('cryptography >= 1.5', deps)
         self.assertIn('soappy', deps)
-        self.assertIn('pyserial', deps)
-        self.assertIn('h2 >= 2.5.0, < 3.0', deps)
+        self.assertIn('pyserial >= 3.0', deps)
+        self.assertIn('h2 >= 3.0, < 4.0', deps)
         self.assertIn('priority >= 1.1.0, < 2.0', deps)
         self.assertIn('pypiwin32', deps)
 

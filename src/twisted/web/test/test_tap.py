@@ -10,31 +10,24 @@ from __future__ import absolute_import, division
 import os
 import stat
 
-from twisted.python.reflect import requireModule
-from twisted.python.usage import UsageError
-from twisted.python.filepath import FilePath
-from twisted.internet.interfaces import IReactorUNIX
 from twisted.internet import reactor, endpoints
+from twisted.internet.interfaces import IReactorUNIX
+from twisted.python.filepath import FilePath
+from twisted.python.reflect import requireModule
 from twisted.python.threadpool import ThreadPool
+from twisted.python.usage import UsageError
+from twisted.spread.pb import PBServerFactory
 from twisted.trial.unittest import TestCase
-from twisted.application import strports
-from twisted.python.compat import _PY3
-
+from twisted.web import demo
+from twisted.web.distrib import ResourcePublisher, UserDirectory
+from twisted.web.script import PythonScript
 from twisted.web.server import Site
 from twisted.web.static import Data, File
 from twisted.web.tap import Options, makeService
-from twisted.web.script import PythonScript
+from twisted.web.tap import makePersonalServerFactory, _AddHeadersResource
+from twisted.web.test.requesthelper import DummyRequest
+from twisted.web.twcgi import CGIScript
 from twisted.web.wsgi import WSGIResource
-
-if not _PY3:
-    # FIXME: https://twistedmatrix.com/trac/ticket/8009
-    from twisted.web.twcgi import CGIScript
-
-    # FIXME: https://twistedmatrix.com/trac/ticket/8010
-    # FIXME: https://twistedmatrix.com/trac/ticket/7598
-    from twisted.web.distrib import ResourcePublisher, UserDirectory
-    from twisted.spread.pb import PBServerFactory
-    from twisted.web.tap import makePersonalServerFactory
 
 
 application = object()
@@ -102,10 +95,6 @@ class ServiceTests(TestCase):
         path, root = self._pathOption()
         path.child("foo.cgi").setContent(b"")
         self.assertIsInstance(root.getChild("foo.cgi", None), CGIScript)
-
-    if _PY3:
-        test_cgiProcessor.skip = (
-            "Will be ported in https://twistedmatrix.com/trac/ticket/8009")
 
 
     def test_epyProcessor(self):
@@ -179,19 +168,12 @@ class ServiceTests(TestCase):
         path = os.path.expanduser(
             os.path.join('~', UserDirectory.userSocketName))
         self.assertEqual(
-            strports.parse(options['ports'][0], None)[:2],
+            endpoints._parseServer(options['ports'][0], None)[:2],
             ('UNIX', (path, None)))
 
     if not IReactorUNIX.providedBy(reactor):
         test_defaultPersonalPath.skip = (
             "The reactor does not support UNIX domain sockets")
-
-    if _PY3:
-        for i in [test_makePersonalServerFactory, test_personalServer,
-                  test_defaultPersonalPath]:
-            i.skip = (
-                "Will be ported in https://twistedmatrix.com/trac/ticket/8010")
-        del i
 
 
     def test_defaultPort(self):
@@ -272,3 +254,46 @@ class ServiceTests(TestCase):
 
     if requireModule('OpenSSL.SSL') is None:
         test_HTTPSAcceptedOnAvailableSSL.skip = 'SSL module is not available.'
+
+
+    def test_add_header_parsing(self):
+        """
+        When --add-header is specific, the value is parsed.
+        """
+        options = Options()
+        options.parseOptions(
+            ['--add-header', 'K1: V1', '--add-header', 'K2: V2']
+        )
+        self.assertEqual(options['extraHeaders'], [('K1', 'V1'), ('K2', 'V2')])
+
+
+    def test_add_header_resource(self):
+        """
+        When --add-header is specified, the resource is a composition that adds
+        headers.
+        """
+        options = Options()
+        options.parseOptions(
+            ['--add-header', 'K1: V1', '--add-header', 'K2: V2']
+        )
+        service = makeService(options)
+        resource = service.services[0].factory.resource
+        self.assertIsInstance(resource, _AddHeadersResource)
+        self.assertEqual(resource._headers, [('K1', 'V1'), ('K2', 'V2')])
+        self.assertIsInstance(resource._originalResource, demo.Test)
+
+
+
+class AddHeadersResourceTests(TestCase):
+    def test_getChildWithDefault(self):
+        """
+        When getChildWithDefault is invoked, it adds the headers to the
+        response.
+        """
+        resource = _AddHeadersResource(
+            demo.Test(), [("K1", "V1"), ("K2", "V2"), ("K1", "V3")])
+        request = DummyRequest([])
+        resource.getChildWithDefault("", request)
+        self.assertEqual(
+            request.responseHeaders.getRawHeaders("K1"), ["V1", "V3"])
+        self.assertEqual(request.responseHeaders.getRawHeaders("K2"), ["V2"])

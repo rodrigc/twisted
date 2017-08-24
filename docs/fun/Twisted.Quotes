@@ -1,10 +1,11 @@
-<runciter> it appears that i've been banned from most servers
-<@glyph> runciter: you probably joined too many channels from the same nick / IP
-<runciter> glyph: yep :(  since this currently in the "dumb hack" stage of development i figured my code would blow up first
-<@glyph> runciter: that is a common problem with first-run Twisted services
-<@glyph> runciter: it's more likely you'll knock over the service you're talking to than that you'll crash
-<runciter> glyph: why does it have to work so well
-<runciter> glyph: this was never a problem with gevent
+<hawkowl> does this mean I can go eat a whole packet of chocolate biscuits
+<hawkowl> because ultimately entropy will mean it never meant anything
+<exarkun> I don't see how it could mean _not_ to do that.
 %
-<derwolfe> Twisted - thank you for continuing to be fun to use and relatively easy to test 😃
+<lukasa> It's midday here and frankly lunchtime is a perfect time to have a few moments of existential horror
+<exarkun> or, in the immortal words of robin williams, goooooood mooooooorning #twisted-dev
+%
+<runciter> xoauth refresh access bearer token amulet
+<runciter> how come you don't see "amulet" more in security contexsts
+<runciter> brb rewriting twisted.cred
 %

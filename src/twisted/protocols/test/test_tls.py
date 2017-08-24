@@ -10,7 +10,7 @@ from __future__ import division, absolute_import
 from zope.interface.verify import verifyObject
 from zope.interface import Interface, directlyProvides, implementer
 
-from twisted.python.compat import intToBytes, iterbytes
+from twisted.python.compat import iterbytes
 try:
     from twisted.protocols.tls import TLSMemoryBIOProtocol, TLSMemoryBIOFactory
     from twisted.protocols.tls import _PullToPush, _ProducerMembrane
@@ -47,7 +47,7 @@ from twisted.internet.task import TaskStopped
 from twisted.protocols.loopback import loopbackAsync, collapsingPumpPolicy
 from twisted.trial.unittest import TestCase, SynchronousTestCase
 from twisted.test.test_tcp import ConnectionLostNotifyingProtocol
-from twisted.test.proto_helpers import StringTransport
+from twisted.test.proto_helpers import StringTransport, NonStreamingProducer
 
 
 class HandshakeCallbackContextFactory:
@@ -520,7 +520,7 @@ class TLSMemoryBIOTests(TestCase):
             self.assertEqual(
                 cert.digest('sha1'),
                 # openssl x509 -noout -sha1 -fingerprint -in server.pem
-                b'45:DD:FD:E2:BD:BF:8B:D0:00:B7:D2:7A:BB:20:F5:34:05:4B:15:80')
+                b'23:4B:72:99:2E:5D:5E:2B:02:C3:BC:1B:7C:50:67:05:4F:60:FF:C9')
         handshakeDeferred.addCallback(cbHandshook)
         return handshakeDeferred
 
@@ -778,7 +778,7 @@ class TLSMemoryBIOTests(TestCase):
 
         # And when the connection completely dies, check the reason.
         def cbDisconnected(clientProtocol):
-            clientProtocol.lostConnectionReason.trap(Error)
+            clientProtocol.lostConnectionReason.trap(Error, ConnectionLost)
         clientConnectionLost.addCallback(cbDisconnected)
         return clientConnectionLost
 
@@ -1185,6 +1185,18 @@ class TLSProducerTests(TestCase):
         self.assertIsNone(tlsProtocol.transport.producer)
 
 
+    def test_streamingProducerUnregisterTwice(self):
+        """
+        Unregistering a streaming producer when no producer is registered is
+        safe.
+        """
+        clientProtocol, tlsProtocol, producer = self.setupStreamingProducer()
+        clientProtocol.transport.unregisterProducer()
+        clientProtocol.transport.unregisterProducer()
+        self.assertIsNone(tlsProtocol._producer)
+        self.assertIsNone(tlsProtocol.transport.producer)
+
+
     def loseConnectionWithProducer(self, writeBlockedOnRead):
         """
         Common code for tests involving writes by producer after
@@ -1379,7 +1391,8 @@ class TLSProducerTests(TestCase):
         producer is not used, and its stopProducing method is called.
         """
         clientProtocol, tlsProtocol = buildTLSProtocol()
-        clientProtocol.connectionLost = lambda reason: reason.trap(Error)
+        clientProtocol.connectionLost = lambda reason: reason.trap(
+            Error, ConnectionLost)
 
         class Producer(object):
             stopped = False
@@ -1417,47 +1430,6 @@ class TLSProducerTests(TestCase):
         is called.
         """
         self.registerProducerAfterConnectionLost(False)
-
-
-
-class NonStreamingProducer(object):
-    """
-    A pull producer which writes 10 times only.
-    """
-
-    counter = 0
-    stopped = False
-
-    def __init__(self, consumer):
-        self.consumer = consumer
-        self.result = Deferred()
-
-    def resumeProducing(self):
-        if self.counter < 10:
-            self.consumer.write(intToBytes(self.counter))
-            self.counter += 1
-            if self.counter == 10:
-                self.consumer.unregisterProducer()
-                self._done()
-        else:
-            if self.consumer is None:
-                raise RuntimeError("BUG: resume after unregister/stop.")
-
-
-    def pauseProducing(self):
-        raise RuntimeError("BUG: pause should never be called.")
-
-
-    def _done(self):
-        self.consumer = None
-        d = self.result
-        del self.result
-        d.callback(None)
-
-
-    def stopProducing(self):
-        self.stopped = True
-        self._done()
 
 
 
