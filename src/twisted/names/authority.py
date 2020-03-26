@@ -300,7 +300,7 @@ class PySourceAuthority(FileAuthority):
 
 
     def wrapRecord(self, type):
-        return lambda name, *arg, **kw: (name, type(*arg, **kw))
+        return lambda name, *arg, **kw: (dns.domainString(name), type(*arg, **kw))
 
 
     def setupConfigNamespace(self):
